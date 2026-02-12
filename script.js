@@ -9,16 +9,16 @@ const mediaDatabase = [
     
     {
         id: 1,
-        type: 'image',
-        url: 'https://picsum.photos/800/1200?random=1',
-        title: '🏔️ Digitale landschappen',
-        description: 'Fantastische werelden gegenereerd door AI',
+        type: 'video',
+        url: 'video.mp4',
+        title: 'The Cleangirl',
+        description: 'Cleaning MacDonalds bathroom for free?',
         weight: 1
     },
     {
         id: 2,
         type: 'video',
-        url: 'hoi.mp4',
+        url: 'HEMAregenboogrookworst.mp4',
         title: 'HEMA',
         description: 'Koop nu HEMA regenboogrookworst!',
         weight: 1
