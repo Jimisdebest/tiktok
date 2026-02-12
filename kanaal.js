@@ -32,14 +32,14 @@ const mediaDatabase = [
         url: 'MINECRAFTMODS-hoe-je-een-mod-installeerd.mp4',
         channel: 'MINECRAFTMODS',
         channelId: 'minecraftmods',
-        title: 'Hoe je een mod installeerd',
+        title: 'Hoe je een mod installeert',
         description: 'Een eenvoudige uitleg voor how to',
         contentType: 'AI',
         weight: 1
     }
 ];
 
-// Channel database
+// Channel database - ALLE KANALEN HIER!
 const channelDatabase = {
     'cleangirl': {
         id: 'cleangirl',
@@ -58,6 +58,15 @@ const channelDatabase = {
         description: 'Officieel HEMA kanaal. Alles voor elkaar! 🛍️',
         subscribers: 8900,
         videos: [2]
+    },
+    'minecraftmods': {
+        id: 'minecraftmods',
+        name: 'MINECRAFTMODS',
+        avatar: 'M',
+        banner: 'linear-gradient(45deg, #3a8520, #5fa84a)',
+        description: 'Minecraft mods tutorials en uitleg! ⛏️🎮',
+        subscribers: 34500,
+        videos: [3]
     }
 };
 
@@ -110,6 +119,9 @@ function loadChannelData() {
     if (subscriptions.includes(channelId)) {
         subscribeBtn.textContent = 'Geabonneerd';
         subscribeBtn.classList.add('subscribed');
+    } else {
+        subscribeBtn.textContent = 'Abonneren';
+        subscribeBtn.classList.remove('subscribed');
     }
     
     // Load channel videos
@@ -270,4 +282,9 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.remove('show');
         }
     });
+});
+
+// Handle browser back/forward
+window.addEventListener('popstate', function(event) {
+    loadChannelData();
 });
