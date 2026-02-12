@@ -1,8 +1,7 @@
-// ==================== KANAAL PAGINA ====================
+// ==================== BOBTOP - ALLEEN VOOR INDEX.HTML ====================
+console.log("script.js GELADEN - index.html pagina");
 
-const WEBSITE_URL = 'https://jimisdebest.github.io/bobtop/';
-
-// Video database (zelfde als in script.js)
+// ==================== VIDEO DATABASE ====================
 const mediaDatabase = [
     {
         id: 1,
@@ -39,150 +38,158 @@ const mediaDatabase = [
     }
 ];
 
-// Channel database - ALLE KANALEN HIER!
-const channelDatabase = {
-    'cleangirl': {
-        id: 'cleangirl',
-        name: 'CleanGirlOfficial',
-        avatar: 'C',
-        banner: 'linear-gradient(45deg, #ff6b6b, #4ecdc4)',
-        description: 'Schoonmaken op bijzondere plekken! 🧹✨',
-        subscribers: 15200,
-        videos: [1]
-    },
-    'hema': {
-        id: 'hema',
-        name: 'HEMA',
-        avatar: 'H',
-        banner: 'linear-gradient(45deg, #e3001b, #ff6b6b)',
-        description: 'Officieel HEMA kanaal. Alles voor elkaar! 🛍️',
-        subscribers: 8900,
-        videos: [2]
-    },
-    'minecraftmods': {
-        id: 'minecraftmods',
-        name: 'MINECRAFTMODS',
-        avatar: 'M',
-        banner: 'linear-gradient(45deg, #3a8520, #5fa84a)',
-        description: 'Minecraft mods tutorials en uitleg! ⛏️🎮',
-        subscribers: 34500,
-        videos: [3]
-    }
-};
+const WEBSITE_URL = 'https://jimisdebest.github.io/bobtop/';
 
 // App state
 let currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+let savedItems = [];
 let subscriptions = [];
+let userPreferences = {
+    likes: [],
+    dislikes: []
+};
 
-// Initialize
+// Initialize localStorage
 function initStorage() {
+    const saved = localStorage.getItem(`saved_${currentUserId}`);
+    if (saved) {
+        savedItems = JSON.parse(saved);
+    }
+    
+    const prefs = localStorage.getItem(`prefs_${currentUserId}`);
+    if (prefs) {
+        userPreferences = JSON.parse(prefs);
+    }
+    
     const subs = localStorage.getItem(`subs_${currentUserId}`);
     if (subs) {
         subscriptions = JSON.parse(subs);
     }
+    
     saveToStorage();
 }
 
 function saveToStorage() {
+    localStorage.setItem(`saved_${currentUserId}`, JSON.stringify(savedItems));
+    localStorage.setItem(`prefs_${currentUserId}`, JSON.stringify(userPreferences));
     localStorage.setItem(`subs_${currentUserId}`, JSON.stringify(subscriptions));
 }
 
-// Get channel from URL
-function getChannelFromUrl() {
+// Get media by ID
+function getMediaById(id) {
+    return mediaDatabase.find(item => item.id === parseInt(id));
+}
+
+// Weighted random selection
+function getRandomMedia() {
+    let availableMedia = mediaDatabase.filter(item => 
+        !userPreferences.dislikes.includes(item.id)
+    );
+    
+    if (availableMedia.length === 0) {
+        availableMedia = mediaDatabase;
+    }
+    
+    const totalWeight = availableMedia.reduce((sum, item) => sum + item.weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (const item of availableMedia) {
+        if (random < item.weight) {
+            return { ...item, uniqueId: `${item.id}_${Date.now()}_${Math.random()}` };
+        }
+        random -= item.weight;
+    }
+    
+    return { ...availableMedia[0], uniqueId: `${availableMedia[0].id}_${Date.now()}_${Math.random()}` };
+}
+
+// Navigeer naar specifieke video op basis van URL
+function navigateToVideoFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('channel');
+    const videoId = urlParams.get('v');
+    
+    if (videoId) {
+        const media = getMediaById(videoId);
+        if (media) {
+            const feed = document.getElementById('feed');
+            if (!feed) return false;
+            
+            feed.innerHTML = '';
+            
+            feed.appendChild(createMediaElement({ 
+                ...media, 
+                uniqueId: `${media.id}_${Date.now()}_${Math.random()}` 
+            }));
+            
+            for (let i = 0; i < 4; i++) {
+                feed.appendChild(createMediaElement(getRandomMedia()));
+            }
+            
+            setTimeout(() => {
+                feed.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+            
+            return true;
+        }
+    }
+    return false;
 }
 
-// Load channel data
-function loadChannelData() {
-    const channelId = getChannelFromUrl();
-    if (!channelId) {
-        window.location.href = 'index.html';
-        return;
-    }
+// Create media element
+function createMediaElement(media) {
+    const mediaItem = document.createElement('div');
+    mediaItem.className = 'media-item';
+    mediaItem.dataset.id = media.id;
+    mediaItem.dataset.uniqueId = media.uniqueId;
+    mediaItem.dataset.channel = media.channelId;
     
-    const channel = channelDatabase[channelId];
-    if (!channel) {
-        window.location.href = 'index.html';
-        return;
-    }
+    const isSaved = savedItems.some(item => item.id === media.id);
+    const isLiked = userPreferences.likes.includes(media.id);
+    const isDisliked = userPreferences.dislikes.includes(media.id);
+    const channelInitial = media.channel.charAt(0).toUpperCase();
     
-    // Set channel header
-    document.getElementById('channelName').textContent = channel.name;
-    document.getElementById('channelDescription').textContent = channel.description;
-    document.getElementById('channelStats').textContent = `${channel.subscribers.toLocaleString()} abonnees`;
-    document.getElementById('channelAvatar').textContent = channel.avatar;
-    document.querySelector('.channel-banner').style.background = channel.banner;
+    const shareUrl = `${WEBSITE_URL}?v=${media.id}`;
     
-    // Check if subscribed
-    const subscribeBtn = document.getElementById('subscribeBtn');
-    if (subscriptions.includes(channelId)) {
-        subscribeBtn.textContent = 'Geabonneerd';
-        subscribeBtn.classList.add('subscribed');
-    } else {
-        subscribeBtn.textContent = 'Abonneren';
-        subscribeBtn.classList.remove('subscribed');
-    }
-    
-    // Load channel videos
-    loadChannelVideos(channel.videos);
-}
-
-// Load channel videos
-function loadChannelVideos(videoIds) {
-    const videosContainer = document.getElementById('channelVideos');
-    const channelVideos = mediaDatabase.filter(video => videoIds.includes(video.id));
-    
-    if (channelVideos.length === 0) {
-        videosContainer.innerHTML = '<div class="empty-state">📹 Nog geen videos</div>';
-        return;
-    }
-    
-    videosContainer.innerHTML = channelVideos.map(video => `
-        <a href="index.html?v=${video.id}" class="channel-video-card">
-            <video src="${video.url}" class="channel-video-thumb"></video>
-            <div class="channel-video-info">
-                <div class="channel-video-title">${video.title}</div>
-                <div class="channel-video-desc">${video.description}</div>
-                <div class="channel-video-meta">${video.contentType || 'Real'}</div>
+    mediaItem.innerHTML = `
+        <div class="media-content">
+            ${media.type === 'video' 
+                ? `<video src="${media.url}" loop autoplay playsinline></video>`
+                : `<img src="${media.url}" alt="${media.title}" loading="lazy">`
+            }
+            <div class="channel-info-overlay">
+                <a href="kanaal.html?channel=${media.channelId}" class="channel-name-link">
+                    <div class="channel-avatar-small">${channelInitial}</div>
+                    <span class="channel-name-text">${media.channel}</span>
+                    <span class="content-type-badge">${media.contentType || 'Real'}</span>
+                </a>
+                <div class="video-title">${media.title}</div>
+                <div class="video-description">${media.description}</div>
             </div>
-        </a>
-    `).join('');
+            <div class="action-buttons">
+                <button class="action-btn like ${isLiked ? 'active' : ''}" onclick="handleLike(${media.id}, this)">👍</button>
+                <button class="action-btn dislike ${isDisliked ? 'active' : ''}" onclick="handleDislike(${media.id}, this)">👎</button>
+                <button class="action-btn save ${isSaved ? 'active' : ''}" onclick="handleSave(${JSON.stringify(media).replace(/"/g, '&quot;')}, this)">💾</button>
+                <button class="action-btn share" onclick="handleShare(${media.id}, '${media.title}')">🔗</button>
+            </div>
+        </div>
+    `;
+    
+    return mediaItem;
 }
 
-// Handle subscribe
-function handleSubscribe() {
-    const channelId = getChannelFromUrl();
-    const btn = document.getElementById('subscribeBtn');
-    
-    const index = subscriptions.indexOf(channelId);
-    if (index === -1) {
-        subscriptions.push(channelId);
-        btn.textContent = 'Geabonneerd';
-        btn.classList.add('subscribed');
-    } else {
-        subscriptions.splice(index, 1);
-        btn.textContent = 'Abonneren';
-        btn.classList.remove('subscribed');
-    }
-    
-    saveToStorage();
-}
-
-// Handle share channel
-function handleShareChannel() {
-    const channelId = getChannelFromUrl();
-    const channel = channelDatabase[channelId];
-    const shareUrl = `${WEBSITE_URL}kanaal.html?channel=${channelId}`;
-    
+// Handle share
+window.handleShare = function(mediaId, mediaTitle) {
+    const shareUrl = `${WEBSITE_URL}?v=${mediaId}`;
     const sharePopup = document.getElementById('sharePopup');
     const shareUrlText = document.getElementById('shareUrlText');
     const whatsappLink = document.getElementById('whatsappShareLink');
     const emailLink = document.getElementById('emailShareLink');
     
+    if (!sharePopup || !shareUrlText || !whatsappLink || !emailLink) return;
+    
     shareUrlText.textContent = shareUrl;
-    whatsappLink.href = `https://wa.me/?text=${encodeURIComponent(channel.name + ' - Kanaal op Bobtop: ' + shareUrl)}`;
-    emailLink.href = `mailto:?subject=${encodeURIComponent('Bobtop kanaal: ' + channel.name)}&body=${encodeURIComponent('Bekijk dit kanaal op Bobtop: ' + shareUrl)}`;
+    whatsappLink.href = `https://wa.me/?text=${encodeURIComponent(mediaTitle + ' - Bekijk op Bobtop: ' + shareUrl)}`;
+    emailLink.href = `mailto:?subject=${encodeURIComponent('Bobtop: ' + mediaTitle)}&body=${encodeURIComponent('Bekijk deze video op Bobtop: ' + shareUrl)}`;
     
     const copyBtn = document.getElementById('copyShareLink');
     copyBtn.onclick = function() {
@@ -196,18 +203,93 @@ function handleShareChannel() {
     };
     
     sharePopup.classList.add('show');
+};
+
+// Handle like
+window.handleLike = function(mediaId, btn) {
+    const index = userPreferences.likes.indexOf(mediaId);
+    if (index === -1) {
+        userPreferences.likes.push(mediaId);
+        btn.classList.add('active');
+        
+        const dislikeIndex = userPreferences.dislikes.indexOf(mediaId);
+        if (dislikeIndex !== -1) {
+            userPreferences.dislikes.splice(dislikeIndex, 1);
+            const dislikeBtn = document.querySelector(`.media-item[data-id="${mediaId}"] .dislike`);
+            if (dislikeBtn) dislikeBtn.classList.remove('active');
+        }
+    } else {
+        userPreferences.likes.splice(index, 1);
+        btn.classList.remove('active');
+    }
+    saveToStorage();
+};
+
+// Handle dislike
+window.handleDislike = function(mediaId, btn) {
+    const index = userPreferences.dislikes.indexOf(mediaId);
+    if (index === -1) {
+        userPreferences.dislikes.push(mediaId);
+        btn.classList.add('active');
+        
+        const likeIndex = userPreferences.likes.indexOf(mediaId);
+        if (likeIndex !== -1) {
+            userPreferences.likes.splice(likeIndex, 1);
+            const likeBtn = document.querySelector(`.media-item[data-id="${mediaId}"] .like`);
+            if (likeBtn) likeBtn.classList.remove('active');
+        }
+    } else {
+        userPreferences.dislikes.splice(index, 1);
+        btn.classList.remove('active');
+    }
+    saveToStorage();
+    refreshFeed();
+};
+
+// Handle save
+window.handleSave = function(media, btn) {
+    const index = savedItems.findIndex(item => item.id === media.id);
+    if (index === -1) {
+        savedItems.push(media);
+        btn.classList.add('active');
+    } else {
+        savedItems.splice(index, 1);
+        btn.classList.remove('active');
+    }
+    saveToStorage();
+};
+
+// Refresh feed
+function refreshFeed() {
+    const feed = document.getElementById('feed');
+    if (!feed) return;
+    
+    feed.innerHTML = '';
+    
+    const navigated = navigateToVideoFromUrl();
+    
+    if (!navigated) {
+        for (let i = 0; i < 5; i++) {
+            const media = getRandomMedia();
+            feed.appendChild(createMediaElement(media));
+        }
+    }
 }
 
-// Show saved items
+// Load more items
+function loadMoreItems() {
+    const feed = document.getElementById('feed');
+    if (!feed) return;
+    const media = getRandomMedia();
+    feed.appendChild(createMediaElement(media));
+}
+
+// Show saved items popup
 window.showSavedItems = function() {
-    let savedItems = [];
-    const saved = localStorage.getItem(`saved_${currentUserId}`);
-    if (saved) {
-        savedItems = JSON.parse(saved);
-    }
-    
     const popup = document.getElementById('savedPopup');
     const list = document.getElementById('savedItemsList');
+    
+    if (!popup || !list) return;
     
     if (savedItems.length === 0) {
         list.innerHTML = '<div class="empty-state">📭 Nog geen opgeslagen videos</div>';
@@ -231,60 +313,185 @@ window.showSavedItems = function() {
 
 // Remove saved item
 window.removeSavedItem = function(mediaId) {
-    let savedItems = [];
-    const saved = localStorage.getItem(`saved_${currentUserId}`);
-    if (saved) {
-        savedItems = JSON.parse(saved);
-    }
-    
     const index = savedItems.findIndex(item => item.id === mediaId);
     if (index !== -1) {
         savedItems.splice(index, 1);
-        localStorage.setItem(`saved_${currentUserId}`, JSON.stringify(savedItems));
+        saveToStorage();
         showSavedItems();
+        refreshFeed();
     }
 };
 
-// Initialize
+// Search functionality
+window.searchVideos = function(query) {
+    const feed = document.getElementById('feed');
+    if (!feed) return;
+    
+    if (!query.trim()) {
+        refreshFeed();
+        return;
+    }
+    
+    const filtered = mediaDatabase.filter(item => 
+        item.title.toLowerCase().includes(query.toLowerCase()) ||
+        item.description.toLowerCase().includes(query.toLowerCase()) ||
+        item.channel.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    feed.innerHTML = '';
+    
+    if (filtered.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'media-item';
+        emptyDiv.style.display = 'flex';
+        emptyDiv.style.justifyContent = 'center';
+        emptyDiv.style.alignItems = 'center';
+        emptyDiv.innerHTML = '<div style="color: white; font-size: 18px;">🔍 Geen resultaten gevonden</div>';
+        feed.appendChild(emptyDiv);
+    } else {
+        filtered.forEach(media => {
+            feed.appendChild(createMediaElement({ 
+                ...media, 
+                uniqueId: `${media.id}_${Date.now()}_${Math.random()}` 
+            }));
+        });
+    }
+};
+
+// Update URL
+function updateUrlWithVideoId(videoId) {
+    const url = new URL(window.location);
+    url.searchParams.set('v', videoId);
+    window.history.pushState({}, '', url);
+}
+
+// Initialize app - ALLEEN VOOR INDEX.HTML
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOMContentLoaded - index.html pagina");
+    
+    // Check of we op index.html zijn
+    if (!document.getElementById('feed')) {
+        console.log("Geen feed element - waarschijnlijk op kanaal.html, script.js stopt hier");
+        return; // Stop als we niet op index.html zijn
+    }
+    
     initStorage();
-    loadChannelData();
     
-    // Event listeners
-    document.getElementById('backBtn').addEventListener('click', function() {
-        window.location.href = 'index.html';
+    const feed = document.getElementById('feed');
+    const savedBtn = document.getElementById('savedBtn');
+    const searchBtn = document.getElementById('searchBtn');
+    const searchBar = document.getElementById('searchBar');
+    const searchInput = document.getElementById('searchInput');
+    const searchCloseBtn = document.getElementById('searchCloseBtn');
+    const closePopup = document.getElementById('closePopup');
+    const closeSharePopup = document.getElementById('closeSharePopup');
+    const popup = document.getElementById('savedPopup');
+    const sharePopup = document.getElementById('sharePopup');
+    
+    // Initial feed
+    refreshFeed();
+    
+    // Update URL when scrolling
+    if (feed) {
+        feed.addEventListener('scroll', function() {
+            const mediaItems = document.querySelectorAll('.media-item');
+            for (const item of mediaItems) {
+                const rect = item.getBoundingClientRect();
+                if (rect.top < 100 && rect.bottom > 100) {
+                    const videoId = item.dataset.id;
+                    updateUrlWithVideoId(videoId);
+                    break;
+            }
+        }
     });
+        
+        // Infinite scroll
+        feed.addEventListener('scroll', function() {
+            if (feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 100) {
+                loadMoreItems();
+            }
+        });
+        
+        // Auto-play videos with sound
+        feed.addEventListener('scroll', function() {
+            const videos = document.querySelectorAll('video');
+            videos.forEach(video => {
+                const rect = video.getBoundingClientRect();
+                const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+                if (isVisible) {
+                    video.muted = false;
+                    video.play().catch(e => {});
+                } else {
+                    video.pause();
+                }
+            });
+        });
+    }
     
-    document.getElementById('subscribeBtn').addEventListener('click', handleSubscribe);
+    // Search button
+    if (searchBtn && searchBar) {
+        searchBtn.addEventListener('click', function() {
+            searchBar.classList.toggle('hidden');
+            if (!searchBar.classList.contains('hidden')) {
+                searchInput.focus();
+            }
+        });
+    }
     
-    document.getElementById('shareChannelBtn').addEventListener('click', handleShareChannel);
+    // Search close button
+    if (searchCloseBtn && searchBar) {
+        searchCloseBtn.addEventListener('click', function() {
+            searchBar.classList.add('hidden');
+            searchInput.value = '';
+            refreshFeed();
+        });
+    }
     
-    document.getElementById('savedBtn').addEventListener('click', showSavedItems);
+    // Search input
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            searchVideos(e.target.value);
+        });
+    }
+    
+    // Saved button
+    if (savedBtn) {
+        savedBtn.addEventListener('click', showSavedItems);
+    }
     
     // Close popups
-    document.getElementById('closePopup').addEventListener('click', function() {
-        document.getElementById('savedPopup').classList.remove('show');
-    });
+    if (closePopup && popup) {
+        closePopup.addEventListener('click', function() {
+            popup.classList.remove('show');
+        });
+    }
     
-    document.getElementById('closeSharePopup').addEventListener('click', function() {
-        document.getElementById('sharePopup').classList.remove('show');
-    });
+    if (closeSharePopup && sharePopup) {
+        closeSharePopup.addEventListener('click', function() {
+            sharePopup.classList.remove('show');
+        });
+    }
     
-    // Click outside popup
-    document.getElementById('savedPopup').addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.remove('show');
-        }
-    });
+    if (popup) {
+        popup.addEventListener('click', function(e) {
+            if (e.target === popup) {
+                popup.classList.remove('show');
+            }
+        });
+    }
     
-    document.getElementById('sharePopup').addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.remove('show');
-        }
-    });
+    if (sharePopup) {
+        sharePopup.addEventListener('click', function(e) {
+            if (e.target === sharePopup) {
+                sharePopup.classList.remove('show');
+            }
+        });
+    }
 });
 
-// Handle browser back/forward
+// Popstate handler
 window.addEventListener('popstate', function(event) {
-    loadChannelData();
+    if (document.getElementById('feed')) {
+        refreshFeed();
+    }
 });
