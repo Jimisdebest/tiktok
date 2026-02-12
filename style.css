@@ -9,18 +9,20 @@ html, body {
   height: 100%;
   background: #0b0b0b;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   color: white;
+  overscroll-behavior: none; /* voorkomt rare bounce effecten */
 }
 
 body {
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
+  scroll-behavior: smooth; /* voor zachte overgangen */
 }
 
 ::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
 }
 
 .feed {
@@ -30,7 +32,7 @@ body {
   width: 100%;
 }
 
-/* elk item vult het hele scherm */
+/* elk item vult precies het scherm met perfecte snap */
 .feed-item {
   width: 100%;
   height: 100vh;
@@ -41,10 +43,9 @@ body {
   justify-content: center;
   align-items: center;
   background-color: #0a0a0a;
-  border-bottom: 1px solid #1f1f1f;
+  flex-shrink: 0;
 }
 
-/* media container */
 .media-container {
   width: 100%;
   height: 100%;
@@ -57,33 +58,11 @@ body {
 video, img {
   width: 100%;
   height: 100%;
-  object-fit: contain;  /* past binnen, geen crop */
+  object-fit: contain;
   background: #050505;
 }
 
-/* fallback als video niet laadt */
-.fallback-message {
-  color: white;
-  background: rgba(30,30,30,0.9);
-  padding: 1.5rem 2rem;
-  border-radius: 24px;
-  font-size: 1.2rem;
-  border: 1px solid #3a3a3a;
-  backdrop-filter: blur(4px);
-}
-
-/* info-onderlaag – kanaal + beschrijving */
-.item-info {
-  position: absolute;
-  bottom: 80px;
-  left: 16px;
-  right: 80px;
-  color: white;
-  text-shadow: 0 0 8px rgba(0,0,0,0.7);
-  z-index: 10;
-  pointer-events: none;
-}
-
+/* kanaalnaam is nu klikbaar */
 .channel-name {
   font-weight: 700;
   font-size: 1.2rem;
@@ -91,6 +70,24 @@ video, img {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.channel-link {
+  color: white;
+  text-decoration: none;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 12px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.channel-link:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .content-badge {
@@ -104,20 +101,36 @@ video, img {
   border: 0.5px solid rgba(255,255,255,0.5);
 }
 
+.item-info {
+  position: absolute;
+  bottom: 100px;
+  left: 16px;
+  right: 100px;
+  color: white;
+  text-shadow: 0 0 8px rgba(0,0,0,0.7);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.channel-name {
+  pointer-events: auto; /* alleen de kanaalnaam is klikbaar */
+}
+
 .title-description {
   font-size: 0.95rem;
   opacity: 0.95;
   max-width: 90%;
+  margin-top: 4px;
 }
 
-/* ACTION BUTTONS – rechts, vast per item */
+/* ACTION BUTTONS - rechts */
 .action-buttons {
   position: absolute;
   bottom: 120px;
   right: 12px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
   z-index: 30;
   pointer-events: auto;
@@ -127,30 +140,29 @@ video, img {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(30, 30, 30, 0.7);
+  background: rgba(30, 30, 30, 0.8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  padding: 8px 6px;
+  padding: 10px 8px;
   border-radius: 30px;
   border: 1px solid rgba(255,255,255,0.2);
   color: white;
   fill: white;
   transition: all 0.15s ease;
   cursor: pointer;
-  min-width: 60px;
+  min-width: 64px;
 }
 
 .action-btn svg {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   filter: drop-shadow(0 2px 4px black);
 }
 
 .action-count {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   margin-top: 4px;
   font-weight: 600;
-  color: white;
 }
 
 /* actieve states */
@@ -160,7 +172,7 @@ video, img {
   border-color: #ff3040;
 }
 .action-btn.disliked {
-  fill: #3a3a3a;
+  fill: #888;
   color: #ccc;
   border-color: #888;
 }
@@ -170,9 +182,114 @@ video, img {
   border-color: #ffd900;
 }
 
-/* dislike fill – we gebruiken zelfde svg path maar passen kleur aan */
 .dislike-btn svg {
   transform: rotate(180deg);
+}
+
+/* SHARE MENU - popup */
+.share-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 1000;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.share-menu.active {
+  visibility: visible;
+  opacity: 1;
+}
+
+.share-menu-content {
+  background: #1a1a1a;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 24px 24px 0 0;
+  padding: 24px;
+  color: white;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.share-menu.active .share-menu-content {
+  transform: translateY(0);
+}
+
+.share-menu h3 {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.share-options {
+  display: flex;
+  gap: 24px;
+  justify-content: space-around;
+  margin-bottom: 30px;
+}
+
+.share-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 12px;
+  border-radius: 16px;
+  transition: background 0.2s;
+  flex: 1;
+  max-width: 120px;
+}
+
+.share-option:hover {
+  background: #333;
+}
+
+.share-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2a2a2a;
+  color: white;
+}
+
+.whatsapp-icon {
+  background: #25D366;
+  color: white;
+}
+
+.copy-icon {
+  background: #4a4a4a;
+  color: white;
+}
+
+.share-close {
+  width: 100%;
+  padding: 16px;
+  background: #333;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.share-close:hover {
+  background: #444;
 }
 
 /* toast melding */
@@ -181,13 +298,12 @@ video, img {
   bottom: 30px;
   left: 50%;
   transform: translateX(-50%) translateY(100px);
-  background: rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.9);
   backdrop-filter: blur(20px);
   color: white;
   padding: 12px 28px;
   border-radius: 50px;
   font-weight: 500;
-  letter-spacing: 0.3px;
   border: 0.5px solid rgba(255,255,255,0.2);
   transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
   z-index: 999;
@@ -200,28 +316,29 @@ video, img {
   transform: translateX(-50%) translateY(0);
 }
 
-/* responsive kleine aanpassingen */
+/* responsive */
 @media (max-width: 600px) {
   .action-buttons {
     bottom: 100px;
     right: 8px;
-    gap: 14px;
+    gap: 12px;
   }
   .action-btn {
-    padding: 6px 4px;
-    min-width: 52px;
+    padding: 8px 6px;
+    min-width: 56px;
   }
   .item-info {
     bottom: 100px;
     left: 12px;
     right: 70px;
   }
+  .share-menu-content {
+    padding: 20px;
+  }
 }
 
-/* sentinel onzichtbaar voor infinite scroll */
 .bottom-sentinel {
   height: 10px;
   width: 100%;
   opacity: 0;
-  pointer-events: none;
 }
