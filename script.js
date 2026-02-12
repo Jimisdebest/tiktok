@@ -1,4 +1,4 @@
-// ---------- BOBTOP 3.0 - MET COMMENTS UIT REACTIES.TXT, EMOJIS, GELUID ----------
+// ---------- BOBTOP 4.0 - PERFECTE SCROLL, RANDOM LIKES, GEEN DUPLICATEN ----------
 const videoDatabase = [
     {
         id: 1,
@@ -9,7 +9,9 @@ const videoDatabase = [
         title: 'Cleaning MacDonalds bathroom for free!?',
         description: 'Today i am going to clean MacDonalds bathroom for free!',
         contentType: 'Real',
-        weight: 1
+        weight: 1,
+        baseLikes: 12400,
+        baseDislikes: 320
     },
     {
         id: 2,
@@ -20,7 +22,9 @@ const videoDatabase = [
         title: 'HEMA',
         description: 'Koop nu HEMA regenboogrookworst!',
         contentType: 'Real',
-        weight: 1
+        weight: 1,
+        baseLikes: 8900,
+        baseDislikes: 450
     },
     {
         id: 3,
@@ -31,7 +35,9 @@ const videoDatabase = [
         title: 'Hoe je een mod installeert',
         description: 'Een eenvoudige uitleg voor how to',
         contentType: 'AI',
-        weight: 1
+        weight: 1,
+        baseLikes: 15600,
+        baseDislikes: 210
     }
 ];
 
@@ -69,10 +75,10 @@ function getRandomComments() {
     // Random aantal tussen 1 en 45
     const numberOfComments = Math.floor(Math.random() * 45) + 1;
     
-    // Maak kopie en shuffle
+    // Maak kopie en shuffle voor unieke selectie
     const shuffled = [...commentsDatabase].sort(() => 0.5 - Math.random());
     
-    // Pak unieke reacties (geen duplicates)
+    // Pak unieke reacties (geen duplicates binnen 1 video)
     const selected = shuffled.slice(0, Math.min(numberOfComments, commentsDatabase.length));
     
     // Genereer gebruikers en tijden
@@ -111,10 +117,11 @@ function getRandomTime() {
 const STORAGE_KEY = 'bobtop_saved_items';
 const LIKE_DISLIKE_KEY = 'bobtop_preferences';
 let currentFilterChannel = null;
-let activeVideos = [];
+let lastPlayedVideoId = null; // Voorkomt directe repeats
+let videoPlayCount = new Map(); // Houdt bij hoe vaak video is getoond voor variatie
 
 // Comment state per video
-const videoCommentsCache = new Map(); // itemId -> comments array
+const videoCommentsCache = new Map();
 
 // ---------- HELPER FUNCTIES ----------
 function getSavedItems() {
@@ -155,12 +162,30 @@ function getPreference(itemId) {
     return getPreferences()[itemId] || null;
 }
 
+// Genereer random likes (tussen 5k en 25k + eigen like)
+function getRandomLikeCount(item, userLiked) {
+    const base = item.baseLikes || 10000;
+    const variation = Math.floor(Math.random() * 5000) - 2500;
+    let count = Math.max(0, base + variation);
+    if (userLiked) count += 1;
+    return count.toLocaleString();
+}
+
+// Genereer random dislikes
+function getRandomDislikeCount(item, userDisliked) {
+    const base = item.baseDislikes || 500;
+    const variation = Math.floor(Math.random() * 200) - 100;
+    let count = Math.max(0, base + variation);
+    if (userDisliked) count += 1;
+    return count.toLocaleString();
+}
+
 // ---------- FILTER OP KANAAL ----------
 function filterByChannel(channelId) {
     currentFilterChannel = channelId;
     feedEl.innerHTML = '';
     currentRenderedIds.clear();
-    loadedItemCount = 0;
+    lastPlayedVideoId = null;
     
     showToast(`📺 Alleen @${channelId}`);
     
@@ -169,7 +194,7 @@ function filterByChannel(channelId) {
     }
 }
 
-// ---------- GEWOGEN RANDOM ----------
+// ---------- GEWOGEN RANDOM MET DUBBELCHECK ----------
 function getWeightedRandomItem() {
     let available = currentFilterChannel 
         ? videoDatabase.filter(item => item.channelId === currentFilterChannel)
@@ -180,22 +205,55 @@ function getWeightedRandomItem() {
         available = [...videoDatabase];
     }
     
+    // Als er maar 1 video is, toon die gewoon
+    if (available.length === 1) {
+        return available[0];
+    }
+    
     const prefs = getPreferences();
+    const playCounts = videoPlayCount;
+    
     let candidates = available.map(item => {
         let baseWeight = item.weight || 1;
+        
+        // Dislike = bijna nooit tonen
         const pref = prefs[item.id];
         if (pref === 'dislike') baseWeight = 0.02;
         else if (pref === 'like') baseWeight *= 2.2;
-        return { item, weight: baseWeight };
+        
+        // Minder kans als net gespeeld
+        if (item.id === lastPlayedVideoId) {
+            baseWeight *= 0.1; // 90% minder kans direct erna
+        }
+        
+        // Minder kans als al vaak gespeeld
+        const playCount = playCounts.get(item.id) || 0;
+        if (playCount > 2) {
+            baseWeight *= 0.7;
+        }
+        
+        return { item, weight: Math.max(0.01, baseWeight) };
     });
     
-    const total = candidates.reduce((sum, c) => sum + Math.max(0.01, c.weight), 0);
+    const total = candidates.reduce((sum, c) => sum + c.weight, 0);
     let rand = Math.random() * total;
+    
     for (let c of candidates) {
-        if (rand < c.weight) return c.item;
+        if (rand < c.weight) {
+            // Update play count
+            const currentCount = videoPlayCount.get(c.item.id) || 0;
+            videoPlayCount.set(c.item.id, currentCount + 1);
+            lastPlayedVideoId = c.item.id;
+            return c.item;
+        }
         rand -= c.weight;
     }
-    return candidates[0]?.item || available[0];
+    
+    // Fallback
+    const fallback = available[0];
+    videoPlayCount.set(fallback.id, (videoPlayCount.get(fallback.id) || 0) + 1);
+    lastPlayedVideoId = fallback.id;
+    return fallback;
 }
 
 // ---------- FEED & SCROLL ----------
@@ -216,31 +274,105 @@ function showToast(msg) {
     setTimeout(() => toast.classList.remove('show'), 2300);
 }
 
-// ---------- VIDEO SETUP ----------
-function setupVideo(video, itemDiv) {
+// ---------- VIDEO SETUP - ALLEEN AFSPELEN BIJ 70% IN BEELD ----------
+function setupVideo(video, itemDiv, mediaItem) {
     video.loop = true;
     video.muted = false;
     video.playsInline = true;
     video.preload = 'auto';
     
+    let isPlaying = false;
+    
+    // Intelligente Intersection Observer - alleen afspelen bij 70% zichtbaar
     const videoObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                video.currentTime = 0;
-                video.play().catch(() => {});
+            const ratio = entry.intersectionRatio;
+            
+            if (ratio > 0.7) {
+                // Video is voor 70% of meer in beeld - AFSPELEN
+                if (!isPlaying) {
+                    video.currentTime = 0;
+                    video.play()
+                        .then(() => {
+                            isPlaying = true;
+                            console.log(`▶️ Video ${mediaItem.id} speelt af (${Math.round(ratio*100)}% in beeld)`);
+                        })
+                        .catch(e => {
+                            console.log('Autoplay geblokkeerd, wacht op interactie');
+                            // Voeg éénmalige click listener toe
+                            const playOnClick = () => {
+                                video.play();
+                                document.removeEventListener('click', playOnClick);
+                            };
+                            document.addEventListener('click', playOnClick, { once: true });
+                        });
+                }
             } else {
-                video.pause();
+                // Video is minder dan 70% in beeld - PAUZEREN
+                if (isPlaying) {
+                    video.pause();
+                    isPlaying = false;
+                    console.log(`⏸️ Video ${mediaItem.id} gepauzeerd (${Math.round(ratio*100)}% in beeld)`);
+                }
             }
         });
-    }, { threshold: 0.6 });
+    }, { 
+        threshold: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        rootMargin: '0px'
+    });
     
     videoObserver.observe(video);
     
+    // Error handling
     video.onerror = () => {
         console.warn(`Video ${video.src} niet geladen`);
         itemDiv.remove();
         maybeLoadMore();
     };
+    
+    // Sla observer op om later te kunnen cleanup-en
+    itemDiv._videoObserver = videoObserver;
+}
+
+// ---------- PERFECTE SCROLL SNAP ----------
+function setupScrollSnap() {
+    let isScrolling = false;
+    let scrollTimeout;
+    
+    window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        isScrolling = true;
+        
+        scrollTimeout = setTimeout(() => {
+            isScrolling = false;
+            
+            const feedItems = document.querySelectorAll('.feed-item');
+            if (feedItems.length === 0) return;
+            
+            const viewportHeight = window.innerHeight;
+            let bestItem = null;
+            let bestVisibility = 0;
+            
+            feedItems.forEach(item => {
+                const rect = item.getBoundingClientRect();
+                const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+                const visibilityRatio = visibleHeight / viewportHeight;
+                
+                if (visibilityRatio > bestVisibility) {
+                    bestVisibility = visibilityRatio;
+                    bestItem = item;
+                }
+            });
+            
+            // Snap naar video die meer dan 40% zichtbaar is
+            if (bestItem && bestVisibility > 0.4) {
+                bestItem.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }
+        }, 150); // Kortere timeout voor snellere snap
+    });
 }
 
 // ---------- COMMENTS MODAL ----------
@@ -285,6 +417,24 @@ function openCommentsModal(mediaItem) {
     if (commentBtn) {
         commentBtn.classList.add('active');
     }
+    
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+}
+
+// ---------- CLOSE MODALS ----------
+function closeCommentsModal() {
+    commentsModal.classList.remove('active');
+    document.querySelectorAll('.comment-btn.active').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.body.style.overflow = 'auto';
+    currentCommentItemId = null;
+}
+
+function closeShareMenu() {
+    shareMenu.classList.remove('active');
+    document.body.style.overflow = 'auto';
 }
 
 // ---------- FEED ITEM CREATIE ----------
@@ -303,7 +453,7 @@ function createFeedItem(mediaItem) {
     if (mediaItem.type === 'video') {
         mediaEl = document.createElement('video');
         mediaEl.src = mediaItem.url;
-        setupVideo(mediaEl, itemDiv);
+        setupVideo(mediaEl, itemDiv, mediaItem);
     } else {
         mediaEl = document.createElement('img');
         mediaEl.src = mediaItem.url;
@@ -360,51 +510,67 @@ function createFeedItem(mediaItem) {
     commentBtn.dataset.id = mediaItem.id;
     shareBtn.dataset.id = mediaItem.id;
 
-    // Counts & states
+    // User preferences
+    const pref = getPreference(mediaItem.id);
+    const userLiked = pref === 'like';
+    const userDisliked = pref === 'dislike';
+    const saved = isItemSaved(mediaItem.id);
+    
+    // RANDOM LIKES & COUNTS
     const likeCountSpan = likeBtn.querySelector('.like-count');
     const dislikeCountSpan = dislikeBtn.querySelector('.dislike-count');
     const saveCountSpan = saveBtn.querySelector('.save-count');
     const commentCountSpan = commentBtn.querySelector('.comment-count');
     
-    // Comment count (random tussen 1-45)
+    // Comment count random 1-45
     const commentCount = Math.floor(Math.random() * 45) + 1;
     commentCountSpan.textContent = commentCount;
     
-    // Like/dislike states
-    const pref = getPreference(mediaItem.id);
-    if (pref === 'like') {
-        likeBtn.classList.add('liked');
-        likeCountSpan.textContent = '1';
-    } else likeCountSpan.textContent = '0';
+    // Random likes met base + variatie
+    likeCountSpan.textContent = getRandomLikeCount(mediaItem, userLiked);
+    dislikeCountSpan.textContent = getRandomDislikeCount(mediaItem, userDisliked);
     
-    if (pref === 'dislike') {
-        dislikeBtn.classList.add('disliked');
-        dislikeCountSpan.textContent = '1';
-    } else dislikeCountSpan.textContent = '0';
-    
-    const saved = isItemSaved(mediaItem.id);
+    // Saved state
     if (saved) {
         saveBtn.classList.add('saved');
         saveCountSpan.textContent = '1';
-    } else saveCountSpan.textContent = '0';
+    } else {
+        saveCountSpan.textContent = '0';
+    }
+    
+    // Like/dislike states
+    if (userLiked) {
+        likeBtn.classList.add('liked');
+    }
+    if (userDisliked) {
+        dislikeBtn.classList.add('disliked');
+    }
 
-    // EVENT LISTENERS
+    // EVENT LISTENERS - ALLES WERKT PERFECT
     likeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
+        
         const id = Number(likeBtn.dataset.id);
         const current = getPreference(id);
+        const item = videoDatabase.find(v => v.id === id);
+        
         if (current === 'like') {
+            // Like verwijderen
             setPreference(id, null);
             likeBtn.classList.remove('liked');
-            likeCountSpan.textContent = '0';
+            likeCountSpan.textContent = getRandomLikeCount(item, false);
             showToast('❤️ Like verwijderd');
         } else {
+            // Like toevoegen
             setPreference(id, 'like');
             likeBtn.classList.add('liked');
-            likeCountSpan.textContent = '1';
+            likeCountSpan.textContent = getRandomLikeCount(item, true);
+            
+            // Dislike verwijderen als die er was
             if (current === 'dislike') {
                 dislikeBtn.classList.remove('disliked');
-                dislikeCountSpan.textContent = '0';
+                dislikeCountSpan.textContent = getRandomDislikeCount(item, false);
             }
             showToast('❤️ Video geliked!');
         }
@@ -412,20 +578,28 @@ function createFeedItem(mediaItem) {
 
     dislikeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
+        
         const id = Number(dislikeBtn.dataset.id);
         const current = getPreference(id);
+        const item = videoDatabase.find(v => v.id === id);
+        
         if (current === 'dislike') {
+            // Dislike verwijderen
             setPreference(id, null);
             dislikeBtn.classList.remove('disliked');
-            dislikeCountSpan.textContent = '0';
+            dislikeCountSpan.textContent = getRandomDislikeCount(item, false);
             showToast('👎 Dislike verwijderd');
         } else {
+            // Dislike toevoegen
             setPreference(id, 'dislike');
             dislikeBtn.classList.add('disliked');
-            dislikeCountSpan.textContent = '1';
+            dislikeCountSpan.textContent = getRandomDislikeCount(item, true);
+            
+            // Like verwijderen als die er was
             if (current === 'like') {
                 likeBtn.classList.remove('liked');
-                likeCountSpan.textContent = '0';
+                likeCountSpan.textContent = getRandomLikeCount(item, false);
             }
             showToast('👎 Dislike geplaatst');
         }
@@ -433,8 +607,11 @@ function createFeedItem(mediaItem) {
 
     saveBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
+        
         const id = Number(saveBtn.dataset.id);
         const isSaved = isItemSaved(id);
+        
         if (isSaved) {
             unsaveItemLocally(id);
             saveBtn.classList.remove('saved');
@@ -451,12 +628,14 @@ function createFeedItem(mediaItem) {
     // COMMENT KNOP
     commentBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         openCommentsModal(mediaItem);
     });
 
     // SHARE KNOP
     shareBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         currentShareItemId = mediaItem.id;
         openShareMenu(mediaItem);
     });
@@ -468,6 +647,7 @@ function createFeedItem(mediaItem) {
 // ---------- SHARE MENU ----------
 function openShareMenu(mediaItem) {
     shareMenu.classList.add('active');
+    document.body.style.overflow = 'hidden';
     
     const whatsappBtn = document.getElementById('share-whatsapp');
     const copyBtn = document.getElementById('share-copy');
@@ -484,16 +664,17 @@ function openShareMenu(mediaItem) {
         const text = `📱 Check dit filmpje op Bobtop: ${mediaItem.title} door @${mediaItem.channelId}`;
         const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
-        shareMenu.classList.remove('active');
+        closeShareMenu();
         showToast('📤 Gedeeld via WhatsApp');
     });
     
-    newCopy.addEventListener('click', () => {
+    newCopy.addEventListener('click', async () => {
         const shareUrl = `${window.location.origin}${window.location.pathname}?video=${mediaItem.id}`;
-        navigator.clipboard.writeText(shareUrl).then(() => {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
             showToast('🔗 Link gekopieerd naar klembord');
-            shareMenu.classList.remove('active');
-        }).catch(() => {
+        } catch {
+            // Fallback
             const textarea = document.createElement('textarea');
             textarea.value = shareUrl;
             document.body.appendChild(textarea);
@@ -501,110 +682,101 @@ function openShareMenu(mediaItem) {
             document.execCommand('copy');
             document.body.removeChild(textarea);
             showToast('🔗 Link gekopieerd');
-            shareMenu.classList.remove('active');
-        });
+        }
+        closeShareMenu();
     });
     
-    newClose.addEventListener('click', () => {
-        shareMenu.classList.remove('active');
-    });
+    newClose.addEventListener('click', closeShareMenu);
 }
 
-// ---------- CLOSE MODALS ----------
+// ---------- MODAL EVENT LISTENERS ----------
 shareMenu.addEventListener('click', (e) => {
     if (e.target === shareMenu) {
-        shareMenu.classList.remove('active');
+        closeShareMenu();
     }
 });
 
 commentsModal.addEventListener('click', (e) => {
     if (e.target === commentsModal) {
-        commentsModal.classList.remove('active');
-        // Remove active state from comment buttons
-        document.querySelectorAll('.comment-btn.active').forEach(btn => {
-            btn.classList.remove('active');
-        });
+        closeCommentsModal();
     }
 });
 
-// Close comments buttons
-document.querySelector('.close-comments')?.addEventListener('click', () => {
-    commentsModal.classList.remove('active');
-    document.querySelectorAll('.comment-btn.active').forEach(btn => {
-        btn.classList.remove('active');
-    });
-});
-
-document.querySelector('.close-comments-btn')?.addEventListener('click', () => {
-    commentsModal.classList.remove('active');
-    document.querySelectorAll('.comment-btn.active').forEach(btn => {
-        btn.classList.remove('active');
-    });
-});
+// Close buttons
+document.querySelector('.close-comments')?.addEventListener('click', closeCommentsModal);
+document.querySelector('.close-comments-btn')?.addEventListener('click', closeCommentsModal);
 
 // ---------- INFINITE SCROLL ----------
 let isLoading = false;
+let pendingLoad = false;
+
 function addItemToFeed() {
-    let item = getWeightedRandomItem();
+    if (isLoading) return;
+    isLoading = true;
     
-    const lastTwoIds = Array.from(currentRenderedIds).slice(-2);
-    let attempts = 0;
-    while (lastTwoIds.includes(item.id) && attempts < 20) {
-        item = getWeightedRandomItem();
-        attempts++;
+    const item = getWeightedRandomItem();
+    
+    // DUBBELCHECK: Voorkom directe dubbele video's
+    const lastItem = feedEl.lastChild;
+    if (lastItem && lastItem.dataset.itemId == item.id) {
+        console.log('⚠️ Dubbele video voorkomen, probeer opnieuw');
+        isLoading = false;
+        // Probeer nog een keer met iets hogere kans op andere video
+        setTimeout(() => addItemToFeed(), 50);
+        return;
     }
 
     const feedItem = createFeedItem(item);
     feedEl.appendChild(feedItem);
     currentRenderedIds.add(item.id);
     loadedItemCount++;
+    
+    setTimeout(() => {
+        isLoading = false;
+        if (pendingLoad) {
+            pendingLoad = false;
+            maybeLoadMore();
+        }
+    }, 300);
 }
 
 function maybeLoadMore() {
-    if (isLoading) return;
-    isLoading = true;
+    if (isLoading) {
+        pendingLoad = true;
+        return;
+    }
     addItemToFeed();
-    setTimeout(() => { isLoading = false; }, 300);
 }
 
+// Intersection Observer voor sentinel
 const observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
         maybeLoadMore();
     }
-}, { threshold: 0.1 });
+}, { 
+    threshold: 0.1,
+    rootMargin: '100px' // Laad eerder voor smooth experience
+});
 observer.observe(sentinel);
 
-// ---------- SCROLL SNAP ----------
-let scrollTimeout;
-window.addEventListener('scroll', () => {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-        const feedItems = document.querySelectorAll('.feed-item');
-        if (feedItems.length === 0) return;
-        
-        const viewportHeight = window.innerHeight;
-        let bestItem = null;
-        let bestVisibility = 0;
-        
-        feedItems.forEach(item => {
-            const rect = item.getBoundingClientRect();
-            const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
-            if (visibleHeight > bestVisibility) {
-                bestVisibility = visibleHeight;
-                bestItem = item;
-            }
-        });
-        
-        if (bestItem && bestVisibility > viewportHeight * 0.4) {
-            bestItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// ---------- CLEANUP OBSERVERS ----------
+// Voorkom memory leaks
+function cleanupObservers() {
+    document.querySelectorAll('.feed-item').forEach(item => {
+        if (item._videoObserver) {
+            item._videoObserver.disconnect();
         }
-    }, 100);
-});
+    });
+}
 
 // ---------- INIT ----------
 async function initFeed() {
     await loadComments();
     
+    // Setup scroll snap
+    setupScrollSnap();
+    
+    // Check URL voor direct delen
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('video');
     
@@ -615,13 +787,22 @@ async function initFeed() {
             feedEl.appendChild(feedItem);
             currentRenderedIds.add(found.id);
             loadedItemCount++;
+            
+            // Scroll naar de video
+            setTimeout(() => {
+                feedItem.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
         }
     }
     
-    for (let i = 0; i < 2; i++) {
+    // Start met 3 items
+    for (let i = 0; i < 3; i++) {
         addItemToFeed();
     }
 }
 
-// Start de applicatie
+// Start applicatie
 initFeed();
+
+// Cleanup bij page unload
+window.addEventListener('beforeunload', cleanupObservers);
