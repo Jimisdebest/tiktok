@@ -1,6 +1,3 @@
-// AI Media Feed - Main JavaScript
-// Website: jimisdebest.github.io/tiktok/
-
 // ==================== JOUW AI MEDIA DATABASE ====================
 // HIER KUN JIJ JOUW EIGEN AI FILMPJES EN FOTO'S TOEVOEGEN!
 // Geef elk item een uniek ID (1,2,3,4,5...)
