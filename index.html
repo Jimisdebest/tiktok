@@ -10,24 +10,44 @@
     <div id="feed" class="feed"></div>
     <div class="bottom-sentinel" id="sentinel"></div>
 
-    <!-- Template voor actieknoppen (rechts) -->
+    <!-- Template voor actieknoppen (rechts) MET EMOJIS -->
     <div id="action-panel-template" style="display: none;">
         <div class="action-buttons">
             <div class="action-btn like-btn" aria-label="Like">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span class="emoji-icon">❤️</span>
                 <span class="action-count like-count">0</span>
             </div>
             <div class="action-btn dislike-btn" aria-label="Dislike">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2.65l1.45 1.32C18.6 8.64 22 11.72 22 15.5 22 18.58 19.58 21 16.5 21c-1.74 0-3.41-.81-4.5-2.09C10.91 20.19 9.24 21 7.5 21 4.42 21 2 18.58 2 15.5c0-3.78 3.4-6.86 8.55-11.54L12 2.65z"/></svg>
+                <span class="emoji-icon">👎</span>
                 <span class="action-count dislike-count">0</span>
             </div>
             <div class="action-btn save-btn" aria-label="Opslaan">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                <span class="emoji-icon">💾</span>
                 <span class="action-count save-count">0</span>
             </div>
+            <div class="action-btn comment-btn" aria-label="Reacties">
+                <span class="emoji-icon">💬</span>
+                <span class="action-count comment-count">0</span>
+            </div>
             <div class="action-btn share-btn" aria-label="Delen">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+                <span class="emoji-icon">📤</span>
                 <span class="action-count share-count">Deel</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMMENTS MODAL -->
+    <div id="comments-modal" class="comments-modal">
+        <div class="comments-content">
+            <div class="comments-header">
+                <h2>💬 Reacties</h2>
+                <button class="close-comments">&times;</button>
+            </div>
+            <div class="comments-list" id="comments-list">
+                <!-- Hier komen de reacties -->
+            </div>
+            <div class="comments-footer">
+                <button class="close-comments-btn">Sluiten</button>
             </div>
         </div>
     </div>
@@ -35,17 +55,17 @@
     <!-- Deel menu (popup) -->
     <div id="share-menu" class="share-menu">
         <div class="share-menu-content">
-            <h3>Delen via</h3>
+            <h3>📤 Delen via</h3>
             <div class="share-options">
                 <div class="share-option" id="share-whatsapp">
                     <div class="share-icon whatsapp-icon">
-                        <svg viewBox="0 0 24 24" width="32" height="32"><path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.548 6.215 2.54 11.41c-.003 1.7.426 3.36 1.24 4.832L2 22l5.876-1.54c1.41.768 3.003 1.174 4.62 1.175h.004c5.2 0 9.46-4.216 9.468-9.411.004-2.51-.97-4.87-2.89-6.796zM12.006 20.34c-1.432 0-2.836-.386-4.058-1.114l-.292-.172-3.488.914.934-3.404-.19-.302c-.74-1.174-1.132-2.53-1.13-3.922.007-4.338 3.54-7.87 7.89-7.87 2.11 0 4.09.825 5.58 2.32 1.49 1.496 2.31 3.48 2.305 5.59-.006 4.34-3.54 7.87-7.88 7.87zm4.24-5.888c-.23-.12-1.36-.67-1.57-.75-.21-.08-.36-.12-.51.12-.15.24-.6.75-.74.9-.13.16-.27.18-.5.06-.23-.12-.98-.36-1.86-1.15-.69-.62-1.15-1.38-1.29-1.61-.13-.24-.01-.37.1-.48.1-.1.23-.26.34-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.4-.06-.12-.51-1.24-.7-1.7-.19-.46-.38-.38-.51-.39h-.44c-.15 0-.4.06-.61.28-.21.22-.8.78-.8 1.9 0 1.12.82 2.2.93 2.36.11.16 1.6 2.45 3.88 3.43.54.24.96.38 1.29.48.54.17 1.04.15 1.43.09.44-.07 1.36-.55 1.55-1.08.19-.53.19-.98.14-1.08-.06-.1-.22-.16-.46-.26z" fill="currentColor"/></svg>
+                        <span class="emoji-large">💬</span>
                     </div>
                     <span>WhatsApp</span>
                 </div>
                 <div class="share-option" id="share-copy">
                     <div class="share-icon copy-icon">
-                        <svg viewBox="0 0 24 24" width="32" height="32"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg>
+                        <span class="emoji-large">🔗</span>
                     </div>
                     <span>Link kopiëren</span>
                 </div>
@@ -54,7 +74,7 @@
         </div>
     </div>
 
-    <div id="toast" class="toast">Opgeslagen in Bobtop-lijst 💾</div>
+    <div id="toast" class="toast">✅ Opgeslagen!</div>
     <script src="script.js"></script>
 </body>
 </html>
