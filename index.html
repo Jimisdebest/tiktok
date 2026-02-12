@@ -3,63 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bobtop - Video Feed</title>
+    <title>Bobtop · AI filmpjes</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <header class="main-header">
-            <div class="header-left">
-                <h1>bobtop</h1>
+    <div id="feed" class="feed"></div>
+    <div class="bottom-sentinel" id="sentinel"></div>
+
+    <!-- side knoppen (worden per item gekloond, maar statische container) -->
+    <div id="action-panel-template" style="display: none;">
+        <div class="action-buttons">
+            <div class="action-btn like-btn" aria-label="Like">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span class="action-count like-count">0</span>
             </div>
-            <div class="header-right">
-                <button class="search-btn" id="searchBtn">🔍</button>
-                <button class="saved-btn" id="savedBtn">Opgeslagen</button>
+            <div class="action-btn dislike-btn" aria-label="Dislike">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2.65l1.45 1.32C18.6 8.64 22 11.72 22 15.5 22 18.58 19.58 21 16.5 21c-1.74 0-3.41-.81-4.5-2.09C10.91 20.19 9.24 21 7.5 21 4.42 21 2 18.58 2 15.5c0-3.78 3.4-6.86 8.55-11.54L12 2.65z"/></svg>
+                <span class="action-count dislike-count">0</span>
             </div>
-        </header>
-
-        <!-- Search bar (hidden by default) -->
-        <div id="searchBar" class="search-bar hidden">
-            <input type="text" id="searchInput" placeholder="Zoeken naar videos, kanalen..." autocomplete="off">
-            <button id="searchCloseBtn">✕</button>
-        </div>
-
-        <div id="feed" class="feed">
-            <!-- Media items worden hier ingeladen via JavaScript -->
-        </div>
-
-        <!-- Popup voor opgeslagen items -->
-        <div id="savedPopup" class="popup">
-            <div class="popup-content">
-                <div class="popup-header">
-                    <h2>Opgeslagen</h2>
-                    <button class="close-btn" id="closePopup">&times;</button>
-                </div>
-                <div id="savedItemsList" class="saved-items-list">
-                    <!-- Opgeslagen items komen hier -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Share popup -->
-        <div id="sharePopup" class="popup">
-            <div class="popup-content">
-                <div class="popup-header">
-                    <h2>Deel</h2>
-                    <button class="close-btn" id="closeSharePopup">&times;</button>
-                </div>
-                <div class="share-content">
-                    <p id="shareUrlText" class="share-url"></p>
-                    <div class="share-buttons">
-                        <button id="copyShareLink" class="share-action-btn">📋 Kopieer link</button>
-                        <a id="whatsappShareLink" href="#" target="_blank" class="share-action-btn whatsapp">📱 Deel via WhatsApp</a>
-                        <a id="emailShareLink" href="#" target="_blank" class="share-action-btn email">📧 Deel via Email</a>
-                    </div>
-                </div>
+            <div class="action-btn save-btn" aria-label="Opslaan">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                <span class="action-count save-count">0</span>
             </div>
         </div>
     </div>
 
+    <div id="toast" class="toast">Opgeslagen in Bobtop-lijst 💾</div>
     <script src="script.js"></script>
 </body>
 </html>
