@@ -162,20 +162,6 @@ function setupVideo(video, itemDiv, mediaItem) {
     itemDiv._videoObserver = videoObserver;
 }
 
-// ---------- VERWIJDER DE OUDE SCROLL TIMEOUT ----------
-// Haal deze hele functie weg of comment 'm uit:
-/*
-let scrollTimeout;
 window.addEventListener('scroll', () => {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-        // ... oude code ...
-    }, 150);
-});
-*/
-
-// VERVANG door DIT (minimal scroll listener voor richting detectie)
-window.addEventListener('scroll', () => {
-    // Alleen voor richting detectie, snapping gebeurt in animation frame
     lastScrollY = window.scrollY;
 }, { passive: true });
