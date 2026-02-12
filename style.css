@@ -1,0 +1,135 @@
+/* Extra styling voor share popup */
+.share-content {
+    padding: 25px;
+    color: white;
+}
+
+.share-url {
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 10px;
+    word-break: break-all;
+    font-size: 14px;
+    margin-bottom: 20px;
+    border: 1px solid #444;
+}
+
+.share-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.share-action-btn {
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    color: white;
+    transition: all 0.3s;
+}
+
+.share-action-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+#copyShareLink {
+    background: #4ecdc4;
+    color: black;
+}
+
+.whatsapp {
+    background: #25D366;
+    color: white;
+}
+
+.email {
+    background: #6c5ce7;
+    color: white;
+}
+
+/* Video ID badge */
+.media-id-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255,255,255,0.3);
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.media-id-badge span {
+    background: #4ecdc4;
+    color: black;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-left: 5px;
+}
+
+.copy-feedback {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #4ecdc4;
+    color: black;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-weight: 600;
+    z-index: 2000;
+    animation: slideUpFade 2s ease;
+    pointer-events: none;
+}
+
+@keyframes slideUpFade {
+    0% {
+        bottom: 20px;
+        opacity: 0;
+    }
+    15% {
+        bottom: 30px;
+        opacity: 1;
+    }
+    85% {
+        bottom: 30px;
+        opacity: 1;
+    }
+    100% {
+        bottom: 50px;
+        opacity: 0;
+    }
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+    .share-content {
+        padding: 20px;
+    }
+    
+    .share-action-btn {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+    
+    .media-id-badge {
+        top: 15px;
+        left: 15px;
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
